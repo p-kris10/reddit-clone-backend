@@ -24,6 +24,7 @@ const UsernamePasswordInput_1 = require("./UsernamePasswordInput");
 const validateRegister_1 = require("../utils/validateRegister");
 const sendEmail_1 = require("../utils/sendEmail");
 const uuid_1 = require("uuid");
+const typeorm_1 = require("typeorm");
 let FieldError = class FieldError {
 };
 __decorate([
@@ -51,7 +52,7 @@ UserResponse = __decorate([
     (0, type_graphql_1.ObjectType)()
 ], UserResponse);
 let UserResolver = class UserResolver {
-    async changePassword(token, newPassword, { redis, em, req }) {
+    async changePassword(token, newPassword, { redis, req }) {
         if (newPassword.length <= 2) {
             return { errors: [{
                         field: "newPassword",
@@ -69,7 +70,8 @@ let UserResolver = class UserResolver {
                     },],
             };
         }
-        const user = await em.findOne(User_1.User, { id: parseInt(userId) });
+        const userIdNum = parseInt(userId);
+        const user = await User_1.User.findOneBy({ id: userIdNum });
         if (!user) {
             return {
                 errors: [{
@@ -78,14 +80,13 @@ let UserResolver = class UserResolver {
                     },],
             };
         }
-        user.password = await argon2_1.default.hash(newPassword);
-        em.persistAndFlush(user);
+        await User_1.User.update({ id: userIdNum }, { password: await argon2_1.default.hash(newPassword) });
         await redis.del(key);
         req.session.userId = user.id;
         return { user };
     }
-    async forgotPassword(email, { em, redis }) {
-        const user = await em.findOne(User_1.User, { email: email });
+    async forgotPassword(email, { redis }) {
+        const user = await User_1.User.findOneBy({ email });
         if (!user) {
             return true;
         }
@@ -94,14 +95,14 @@ let UserResolver = class UserResolver {
         (0, sendEmail_1.sendEmail)(email, `<a href="http://localhost:3000/change-password/${token}">reset password</a>`);
         return true;
     }
-    async me({ req, em }) {
+    async me({ req }) {
         if (!req.session.userId) {
             return null;
         }
-        const user = await em.findOne(User_1.User, { id: req.session.userId });
+        const user = await User_1.User.findOneBy({ id: req.session.userId });
         return user;
     }
-    async register(options, { em }) {
+    async register(options, { req }) {
         const errors = (0, validateRegister_1.validateRegister)(options);
         if (errors) {
             return { errors };
@@ -109,14 +110,12 @@ let UserResolver = class UserResolver {
         const hashedPassword = await argon2_1.default.hash(options.password);
         let user;
         try {
-            const result = await em.createQueryBuilder(User_1.User).getKnexQuery().insert({
+            const result = await (0, typeorm_1.getConnection)().createQueryBuilder().insert().into(User_1.User).values({
                 username: options.username,
                 email: options.email,
                 password: hashedPassword,
-                created_at: new Date(),
-                updated_at: new Date,
-            }).returning("*");
-            user = result[0];
+            }).returning("*").execute();
+            user = result.raw[0];
         }
         catch (err) {
             console.log(typeof (err.code));
@@ -129,12 +128,13 @@ let UserResolver = class UserResolver {
                 };
             }
         }
+        req.session.userId = user.id;
         return { user };
     }
-    async login(usernameOrEmail, password, { em, req }) {
-        const user = await em.findOne(User_1.User, usernameOrEmail.includes('@') ?
-            { email: usernameOrEmail }
-            : { username: usernameOrEmail });
+    async login(usernameOrEmail, password, { req }) {
+        const user = await User_1.User.findOne(usernameOrEmail.includes('@') ?
+            { where: { email: usernameOrEmail } }
+            : { where: { username: usernameOrEmail } });
         if (!user) {
             return {
                 errors: [{

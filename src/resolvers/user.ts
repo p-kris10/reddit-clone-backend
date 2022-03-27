@@ -4,6 +4,7 @@ import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver } fro
 import argon2 from "argon2";
 import {EntityManager} from "@mikro-orm/postgresql"
 import { COOKIE_NAME } from '../constants';
+import { createContext } from 'vm';
 @InputType()
 class UsernamePasswordInput{
     @Field()
@@ -28,9 +29,17 @@ class UserResponse{
     @Field(()=> User ,{nullable:true})
     user? : User;
 }
-
 @Resolver()
 export class UserResolver{
+    @Mutation(()=> Boolean)
+    async forgotPassword(
+        @Arg('email') email : string,
+        @Ctx() {req}: MyContext
+    )
+    {
+        return true;
+    }
+
     @Query(()=> User,{nullable:true})
     async me(
         @Ctx() {req,em} : MyContext

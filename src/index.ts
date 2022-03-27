@@ -15,8 +15,10 @@ import { createClient }from 'redis';
 import { MyContext } from "./types";
 import {ApolloServerPluginLandingPageGraphQLPlayground} from "apollo-server-core";
 import cors from 'cors'
-
+import {sendEmail} from "./utils/sendEmail"
+import { User } from "./entities/User";
 const main = async() =>{
+ 
     const orm = await MikroORM.init(microConfig);
     await orm.getMigrator().up();
     
@@ -73,5 +75,3 @@ const main = async() =>{
 main().catch((err)=>{
     console.log(err);
 })
-
-console.log("hello there");

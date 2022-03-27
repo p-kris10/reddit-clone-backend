@@ -11,7 +11,7 @@ import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
 import session from "express-session";
 import connectRedis from 'connect-redis';
-import { createClient }from 'redis';
+import Redis from 'ioredis';
 import { MyContext } from "./types";
 import {ApolloServerPluginLandingPageGraphQLPlayground} from "apollo-server-core";
 import cors from 'cors'
@@ -24,9 +24,8 @@ const main = async() =>{
     
     const app = express();
     let RedisStore = connectRedis(session)
-    // redis@v4
-    let redisClient = createClient({ legacyMode: true })
-    redisClient.connect().catch(console.error)
+
+    let redis = new Redis();
 
     app.use(cors({
         origin:"http://localhost:3000",
@@ -36,7 +35,7 @@ const main = async() =>{
     app.use(
         session({
         name : COOKIE_NAME,
-        store: new RedisStore({ client: redisClient, 
+        store: new RedisStore({ client: redis, 
             disableTouch: true}),
         cookie : {
             maxAge: 1000 * 60 * 60 * 24 *365 *10, // 10years
@@ -55,7 +54,7 @@ const main = async() =>{
             validate:false
         }),
         plugins: [ApolloServerPluginLandingPageGraphQLPlayground()],
-        context: ({req,res}) =>({em : orm.em,req,res})
+        context: ({req,res}) =>({em : orm.em,req,res,redis})
     });
 
     // added this line

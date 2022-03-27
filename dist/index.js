@@ -15,7 +15,7 @@ const post_1 = require("./resolvers/post");
 const user_1 = require("./resolvers/user");
 const express_session_1 = __importDefault(require("express-session"));
 const connect_redis_1 = __importDefault(require("connect-redis"));
-const redis_1 = require("redis");
+const ioredis_1 = __importDefault(require("ioredis"));
 const apollo_server_core_1 = require("apollo-server-core");
 const cors_1 = __importDefault(require("cors"));
 const main = async () => {
@@ -23,15 +23,14 @@ const main = async () => {
     await orm.getMigrator().up();
     const app = (0, express_1.default)();
     let RedisStore = (0, connect_redis_1.default)(express_session_1.default);
-    let redisClient = (0, redis_1.createClient)({ legacyMode: true });
-    redisClient.connect().catch(console.error);
+    let redis = new ioredis_1.default();
     app.use((0, cors_1.default)({
         origin: "http://localhost:3000",
         credentials: true
     }));
     app.use((0, express_session_1.default)({
         name: constants_1.COOKIE_NAME,
-        store: new RedisStore({ client: redisClient,
+        store: new RedisStore({ client: redis,
             disableTouch: true }),
         cookie: {
             maxAge: 1000 * 60 * 60 * 24 * 365 * 10,
@@ -49,7 +48,7 @@ const main = async () => {
             validate: false
         }),
         plugins: [(0, apollo_server_core_1.ApolloServerPluginLandingPageGraphQLPlayground)()],
-        context: ({ req, res }) => ({ em: orm.em, req, res })
+        context: ({ req, res }) => ({ em: orm.em, req, res, redis })
     });
     await apolloServer.start();
     apolloServer.applyMiddleware({ app, cors: false });

@@ -14,8 +14,9 @@ import { User } from "./entities/User";
 import { HelloResolver } from "./resolvers/hello";
 import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
+import path from "path";
 const main = async() =>{
-
+//rr
     const conn = await createConnection(
         {
             type: 'postgres',
@@ -24,11 +25,14 @@ const main = async() =>{
             password:'incorrect',
             logging : true,
             synchronize : true,
+            migrations:[path.join(__dirname,"./migrations/*")],
             entities :[Post,User]
         }
     );
 
+    await conn.runMigrations();
 
+    // await Post.delete({});
  
    
     const app = express();

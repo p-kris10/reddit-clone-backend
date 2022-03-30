@@ -160,7 +160,7 @@ export class PostResolver{
     @Query(()=>Post,{nullable:true})
     post(
         @Arg('id',() => Int) id :number) : Promise<Post | null >{
-        return Post.findOneBy({id})
+        return Post.findOne({where:{id},relations :["creator"]})
         
     }
 
@@ -194,11 +194,16 @@ export class PostResolver{
         return post;
     }
 
-    @Mutation(()=>Boolean)
-    async deletePost(
-        @Arg('id') id : number) : Promise<boolean>{
-        await Post.delete(id);
-        return true;
-      
-    }
+    @Mutation(() => Boolean)
+  @UseMiddleware(isAuth)
+  async deletePost(
+    @Arg("id", () => Int) id: number,
+    @Ctx() { req }: MyContext
+  ): Promise<boolean> {
+
+    await Post.delete({ id, creatorId: req.session.userId });
+    return true;
+  }
+
+
 }

@@ -4,7 +4,7 @@ import {MyContext} from "../types";
 import {isAuth} from "../middleware/isAuth"
 import { getConnection } from "typeorm";
 import { Updoot } from "../entities/Updoot";
-
+import { Comment } from "../entities/Comment";
 
 
 @InputType()
@@ -38,9 +38,11 @@ export class PostResolver{
         @Root() post: Post,
         @Ctx() {userLoader} : MyContext
     ){
+        console.log(post.creatorId)
         return userLoader.load(post.creatorId)
         
     }
+
 
     @FieldResolver(()=> Int,{nullable : true})
     async voteStatus(
@@ -57,6 +59,9 @@ export class PostResolver{
         
       return updoot ? updoot.value : null;
     }
+
+
+
 
     @Mutation(() => Boolean)
     @UseMiddleware(isAuth)

@@ -49,6 +49,7 @@ let PostResolver = class PostResolver {
         return post.text.slice(0, 50);
     }
     creator(post, { userLoader }) {
+        console.log(post.creatorId);
         return userLoader.load(post.creatorId);
     }
     async voteStatus(post, { updootLoader, req }) {

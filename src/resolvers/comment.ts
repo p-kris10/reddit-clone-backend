@@ -1,10 +1,28 @@
-import { Arg, Ctx, FieldResolver, Int, Mutation, Query, Resolver, Root, UseMiddleware } from "type-graphql";
+import { Arg, Ctx, Field, FieldResolver, Int, Mutation, ObjectType, Query, Resolver, Root, UseMiddleware } from "type-graphql";
 import { getConnection } from "typeorm";
 import { Comment } from "../entities/Comment";
 import { isAuth } from "../middleware/isAuth";
 import { MyContext } from "../types";
 
 
+@ObjectType()
+class CommFieldError{
+    @Field()
+    field : string;
+    @Field()
+    message : string;
+}
+
+
+@ObjectType()
+class CommResponse{
+    @Field(() => [CommFieldError],{nullable : true})
+    errors? : CommFieldError[];
+
+    @Field(()=> Comment ,{nullable:true})
+    comm? : Comment;
+}
+//comment resolver
 @Resolver(Comment)
 export class CommentResolver{
     
@@ -35,36 +53,60 @@ export class CommentResolver{
 
     }
 
-    @Mutation(() => Comment)
+    @Mutation(() => Boolean)
+    @UseMiddleware(isAuth)
+    async deleteComment(
+      @Arg("id", () => Int) id: number,
+      @Ctx() { req }: MyContext
+    ): Promise<boolean> {
+  
+      await Comment.delete({ id, creatorId: req.session.userId });
+      return true;
+    }
+
+    @Mutation(() => CommResponse)
     @UseMiddleware(isAuth)
     async commentUpdate(
       @Arg("comId", () => Int) comId: number,
       @Arg("text", () => String) text: string,
+      @Arg("creatorId",()=> Int) creatorId : number,
       @Ctx() { req }: MyContext
-    )
+    ): Promise<CommResponse>
     {
-      const result = await getConnection()
-      .createQueryBuilder()
-      .update(Comment)
-      .set({ text })
-      .where('id = :id and "creatorId" = :userId', {
-        id : comId,
-        userId: req.session.userId,
-      })
-      .returning("*")
-      .execute();
+      if(creatorId === req.session.userId)
+      {
+        
+        const result = await getConnection()
+        .createQueryBuilder()
+        .update(Comment)
+        .set({ text })
+        .where('id = :id and "creatorId" = :userId', {
+          id : comId,
+          userId: req.session.userId,
+        })
+        .returning("*")
+        .execute();
+        return  {comm : result.raw[0]};
 
-      return result.raw[0];
+      }
+      return{
+        errors : [{
+
+              field:"user",
+              message:"user unauthorized to modify comment"
+
+          },]
+      };
 
     }
 
     @Query(() => [Comment],{nullable:true})
-    async getComments(
+    async comments(
       @Arg("postId", () => Int) postId: number,
       @Ctx() { req }: MyContext
     )
     {
-      const comments = await Comment.find({where: {postId}})
+      const comments = await Comment.find({where: {postId} ,order:{id :"DESC"}})
       return comments
     }
 

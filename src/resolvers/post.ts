@@ -38,7 +38,7 @@ export class PostResolver{
         @Root() post: Post,
         @Ctx() {userLoader} : MyContext
     ){
-        console.log(post.creatorId)
+        //console.log(post.creatorId)
         return userLoader.load(post.creatorId)
         
     }
@@ -95,7 +95,7 @@ export class PostResolver{
             set points = points + $1
             where id = $2
             `,
-            [2 * realValue, postId]
+            [realValue, postId]
             );
         });
         } else if (!updoot) {
